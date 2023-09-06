@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.provider.CompositeTokenGranter;
 import org.springframework.security.oauth2.provider.TokenGranter;
 import org.springframework.security.oauth2.provider.approval.ApprovalStore;
 import org.springframework.security.oauth2.provider.approval.TokenApprovalStore;
+import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.KeyStoreKeyFactory;
@@ -41,25 +42,25 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 	@Override
 	public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
 		clients.inMemory().withClient("algafood-web").secret(passwordEncoder.encode("web123"))
-				.authorizedGrantTypes("password", "refresh_token").scopes("write", "read")
+				.authorizedGrantTypes("password", "refresh_token").scopes("WRITE", "READ")
 				.accessTokenValiditySeconds(6 * 60 * 60) // 6 horas
 				.refreshTokenValiditySeconds(60 * 24 * 60 * 60) // 60 dias
 
 				.and()
 
 				.withClient("foodanalytics").secret(passwordEncoder.encode("food123"))
-				.authorizedGrantTypes("authorization_code").scopes("write", "read")
+				.authorizedGrantTypes("authorization_code").scopes("WRITE", "READ")
 				.redirectUris("http://localhost:8082")
 
 				.and()
 
-				.withClient("webadmin").authorizedGrantTypes("implicit").scopes("write", "read")
+				.withClient("webadmin").authorizedGrantTypes("implicit").scopes("WRITE", "READ")
 				.redirectUris("http://aplicacao-cliente")
 
 				.and()
 
 				.withClient("faturamento").secret(passwordEncoder.encode("faturamento123"))
-				.authorizedGrantTypes("client_credentials", "refresk_token").scopes("write", "read")
+				.authorizedGrantTypes("client_credentials", "refresk_token").scopes("WRITE", "READ")
 
 				.and()
 
@@ -76,11 +77,16 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 
 	@Override
 	public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+		
+		var enhancerChain = new TokenEnhancerChain();
+		enhancerChain.setTokenEnhancers(Arrays.asList(new JwtCustomClaimsTokenEnhancer(), jwtAccessTokenConverter()));
+		
 		endpoints
 			.authenticationManager(authenticationManager)
 			.userDetailsService(userDetailsService)
 			.reuseRefreshTokens(false)
 			.accessTokenConverter(jwtAccessTokenConverter())
+			.tokenEnhancer(enhancerChain)
 			.approvalStore(approvalStore(endpoints.getTokenStore()))
 			.tokenGranter(tokenGranter(endpoints));
 	}
